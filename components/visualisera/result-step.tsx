@@ -43,6 +43,7 @@ type ResultStepProps = {
   submittedContact: { name: string; preferredContactMethod: "Telefon" | "E-post" } | null;
   contactSaving: boolean;
   onContactSubmit: (contact: LeadContactInput & { consentTimestamp: string }) => void;
+  visualizationUrl: string | null;
   onOpenDrainage: () => void;
   onBook: () => void;
   onEmail: () => void;
@@ -83,6 +84,7 @@ export function ResultStep({
   submittedContact,
   contactSaving,
   onContactSubmit,
+  visualizationUrl,
   onOpenDrainage,
   onBook,
   onEmail,
@@ -281,6 +283,20 @@ export function ResultStep({
       ) : null}
 
       <DrainageUpsellSection onOpen={onOpenDrainage} completed={!!drainageAssessment} />
+
+      {visualizationUrl ? (
+        <div className="funnel-result-reveal mt-10 text-center">
+          <a
+            href={visualizationUrl}
+            className="btn-funnel inline-flex h-12 items-center justify-center rounded-full px-8 text-sm font-medium shadow-lg shadow-black/20"
+          >
+            Öppna min visualisering
+          </a>
+          <p className="mt-3 text-xs text-ec-text-dim">
+            Din personliga sida — spara länken och justera när som helst.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-10">
         <ResultContactCard

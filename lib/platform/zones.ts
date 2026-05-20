@@ -7,6 +7,7 @@ export const ROUTES = {
   funnel: {
     visualisera: "/visualisera",
     drainage: "/drainage",
+    visualisering: (leadId: string) => `/visualisering/${leadId}`,
   },
   admin: {
     root: "/admin",

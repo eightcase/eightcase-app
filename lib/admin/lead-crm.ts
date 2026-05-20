@@ -1,4 +1,5 @@
 import type { PreparedLead } from "@/lib/ai-visualization/pipeline";
+import { visualizationPagePath } from "@/lib/visualization/state";
 import type { DrainageAssessment } from "@/lib/drainage/types";
 import type { Lead, LeadStatus as MockHeatStatus } from "@/lib/admin/mock-data";
 
@@ -41,6 +42,12 @@ export type CrmLead = {
   preferredContactMethod: string | null;
   consentGiven: boolean;
   consentTimestamp: string | null;
+  leadSource: string | null;
+  lastActivityAt: string | null;
+  emailSentAt: string | null;
+  revisionCount: number;
+  lastVersionLabel: string | null;
+  visualizationUrl: string;
 };
 
 export const LEAD_STATUS_STORAGE_KEY = "eightcase.leadCrmStatuses.v1";
@@ -193,6 +200,12 @@ export function crmLeadFromPrepared(
     preferredContactMethod: lead.preferredContactMethod ?? null,
     consentGiven: lead.consentGiven ?? false,
     consentTimestamp: lead.consentTimestamp ?? null,
+    leadSource: lead.leadSource ?? null,
+    lastActivityAt: lead.lastActivityAt ?? null,
+    emailSentAt: lead.emailSentAt ?? null,
+    revisionCount: lead.revisionCount ?? 0,
+    lastVersionLabel: lead.lastVersionLabel ?? null,
+    visualizationUrl: visualizationPagePath(lead.id),
   };
 
   return {
@@ -260,6 +273,12 @@ export function crmLeadFromMock(
     preferredContactMethod: null,
     consentGiven: false,
     consentTimestamp: null,
+    leadSource: "mock",
+    lastActivityAt: null,
+    emailSentAt: null,
+    revisionCount: 0,
+    lastVersionLabel: null,
+    visualizationUrl: visualizationPagePath(lead.id),
   };
 
   return {

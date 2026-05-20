@@ -62,6 +62,11 @@ export type PreparedLead = {
   preferredContactMethod?: string | null;
   consentGiven?: boolean;
   consentTimestamp?: string | null;
+  leadSource?: string | null;
+  lastActivityAt?: string | null;
+  emailSentAt?: string | null;
+  revisionCount?: number;
+  lastVersionLabel?: string | null;
 };
 
 export function attachContactToLead(
@@ -168,6 +173,8 @@ export function prepareMockLead(input: {
   valueIncrease: { min: number; max: number };
   drainageAssessment: DrainageAssessment | null;
   pipeline: AIPipelineResult | null;
+  leadId?: string;
+  leadSource?: string;
 }): PreparedLead {
   const signature = JSON.stringify({
     address: input.state.address,
@@ -183,8 +190,9 @@ export function prepareMockLead(input: {
   });
 
   return {
-    id: `lead_${Date.now()}`,
+    id: input.leadId ?? `lead_${Date.now()}`,
     createdAt: new Date().toISOString(),
+    leadSource: input.leadSource ?? "visualisera_demo",
     address: input.state.address,
     style: input.state.style,
     size: input.state.size,

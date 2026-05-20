@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DrainageOverlay } from "@/components/drainage/drainage-overlay";
 import { AddressStep } from "@/components/visualisera/address-step";
+import {
+  EarlyContactStep,
+  type EarlyContactPayload,
+} from "@/components/visualisera/early-contact-step";
 import { FunnelShell } from "@/components/visualisera/funnel-shell";
 import { LoadingStep } from "@/components/visualisera/loading-step";
 import { ResultStep } from "@/components/visualisera/result-step";
@@ -34,9 +38,13 @@ import {
   type PreparedLead,
 } from "@/lib/ai-visualization/pipeline";
 import type { LeadContactInput } from "@/lib/visualisera/lead-contact";
-import { saveDemoLead } from "@/lib/admin/demo-leads";
-import { saveLeadToSupabase } from "@/lib/admin/supabase-leads";
+import { persistCompleteLead, persistEarlyCapture } from "@/lib/leads/lead-persistence";
 import { getSupabasePublicConfigStatus } from "@/lib/supabase/client";
+import {
+  funnelStateToEditorState,
+  visualizationPagePath,
+} from "@/lib/visualization/state";
+import { persistVisualizationRevision } from "@/lib/leads/lead-persistence";
 import type {
   BudgetRange,
   FunnelState,
@@ -49,6 +57,7 @@ import type { DrainageAssessment } from "@/lib/drainage/types";
 
 const STEP_ORDER: FunnelStep[] = [
   "address",
+  "early_contact",
   "style",
   "size",
   "features",
@@ -92,7 +101,11 @@ export function VisualiseraFunnel() {
     preferredContactMethod: "Telefon" | "E-post";
   } | null>(null);
   const supabaseConfig = getSupabasePublicConfigStatus();
+  const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
+  const [leadStorage, setLeadStorage] = useState<"supabase" | "demo" | null>(null);
+  const [earlyCaptureSaving, setEarlyCaptureSaving] = useState(false);
   const lastSavedSignatureRef = useRef<string | null>(null);
+  const syncedVizRevisionRef = useRef(false);
   const goNext = useCallback(() => {
     const i = STEP_ORDER.indexOf(step);
     if (i >= 0 && i < STEP_ORDER.length - 1) {
@@ -114,6 +127,7 @@ export function VisualiseraFunnel() {
     setLeadSaveDetail(null);
     setContactSubmitted(false);
     setSubmittedContact(null);
+    syncedVizRevisionRef.current = false;
     lastSavedSignatureRef.current = null;
     setPipelineResult(null);
     setLoadingIndex(0);
@@ -163,9 +177,41 @@ export function VisualiseraFunnel() {
       valueIncrease,
       drainageAssessment,
       pipeline: pipelineResult,
+      leadId: activeLeadId ?? undefined,
+      leadSource: activeLeadId ? "visualisera_demo" : undefined,
     });
     setPreparedLead((prev) => (prev?.signature === nextLead.signature ? prev : nextLead));
-  }, [drainageAssessment, estimate, pipelineResult, state, step]);
+  }, [activeLeadId, drainageAssessment, estimate, pipelineResult, state, step]);
+
+  useEffect(() => {
+    if (step !== "result" || !activeLeadId || !leadStorage || syncedVizRevisionRef.current) {
+      return;
+    }
+    syncedVizRevisionRef.current = true;
+    const editor = funnelStateToEditorState(state, 2);
+    void persistVisualizationRevision(activeLeadId, editor, leadStorage);
+  }, [activeLeadId, leadStorage, state, step]);
+
+  const handleEarlyContactSubmit = useCallback(
+    async (payload: EarlyContactPayload) => {
+      if (!state.address.trim()) return;
+      setEarlyCaptureSaving(true);
+      const result = await persistEarlyCapture({
+        address: state.address,
+        contactMethod: payload.contactMethod,
+        email: payload.email,
+        phone: payload.phone,
+        consentGiven: payload.consentGiven,
+      });
+      setEarlyCaptureSaving(false);
+      if (result.leadId) {
+        setActiveLeadId(result.leadId);
+        setLeadStorage(result.storage);
+      }
+      goNext();
+    },
+    [goNext, state.address],
+  );
 
   const handleContactSubmit = useCallback(
     async (contact: LeadContactInput & { consentTimestamp: string }) => {
@@ -173,7 +219,10 @@ export function VisualiseraFunnel() {
       const signature = preparedLead.signature;
       if (lastSavedSignatureRef.current === signature) return;
 
-      const leadWithContact = attachContactToLead(preparedLead, contact);
+      const leadWithContact = attachContactToLead(
+        { ...preparedLead, id: activeLeadId ?? preparedLead.id },
+        contact,
+      );
       setSubmittedContact({
         name: contact.name,
         preferredContactMethod: contact.preferredContactMethod,
@@ -183,18 +232,14 @@ export function VisualiseraFunnel() {
       setLeadSaveDetail(null);
 
       try {
-        const supabaseResult = await saveLeadToSupabase(leadWithContact);
-        if (supabaseResult.success) {
-          lastSavedSignatureRef.current = signature;
-          setLeadSaveStatus("supabase");
-          setLeadSaveDetail(supabaseResult.message);
-          return;
-        }
-
-        saveDemoLead(leadWithContact);
+        const result = await persistCompleteLead(leadWithContact, leadStorage);
         lastSavedSignatureRef.current = signature;
-        setLeadSaveStatus("demo");
-        setLeadSaveDetail(supabaseResult.message);
+        setLeadSaveStatus(result.storage);
+        setLeadSaveDetail(result.message);
+        if (result.success && result.storage === "supabase") {
+          setLeadStorage("supabase");
+          if (!activeLeadId) setActiveLeadId(leadWithContact.id);
+        }
       } catch (err) {
         setLeadSaveStatus("error");
         setLeadSaveDetail(
@@ -202,7 +247,7 @@ export function VisualiseraFunnel() {
         );
       }
     },
-    [preparedLead],
+    [activeLeadId, leadStorage, preparedLead],
   );
 
   const toggleFeature = (feature: string) => {
@@ -243,6 +288,10 @@ export function VisualiseraFunnel() {
           onChange={(address) => setState((s) => ({ ...s, address }))}
           onContinue={goNext}
         />
+      )}
+
+      {step === "early_contact" && (
+        <EarlyContactStep saving={earlyCaptureSaving} onSubmit={handleEarlyContactSubmit} />
       )}
 
       {step === "style" && (
@@ -297,6 +346,9 @@ export function VisualiseraFunnel() {
             );
           }}
           onEmail={() => setEmailSent(true)}
+          visualizationUrl={
+            activeLeadId ? visualizationPagePath(activeLeadId) : null
+          }
         />
       )}
     </FunnelShell>

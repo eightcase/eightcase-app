@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { CrmLeadStatusBadge } from "@/components/admin/crm-lead-status-badge";
+import Link from "next/link";
 import {
   formatKrRange,
   formatLeadDate,
@@ -73,6 +74,7 @@ export function LeadDetailDrawer({
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
           <ContactSection lead={lead} />
+          <VisualizationActivitySection lead={lead} />
 
           <section className="flex flex-wrap items-center gap-2">
             <SourceChip source={lead.source} />
@@ -183,6 +185,54 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-ec-text-dim">{label}</span>
       <span className="text-right font-medium text-ec-warm">{value}</span>
     </div>
+  );
+}
+
+function VisualizationActivitySection({ lead }: { lead: CrmLead }) {
+  return (
+    <section className="rounded-xl border border-ec-border-subtle bg-ec-bg-subtle/40 px-4 py-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
+        Visualisering
+      </p>
+      <ul className="mt-3 space-y-2 text-sm text-ec-text-muted">
+        <li>
+          <span className="text-ec-text-dim">Revisioner: </span>
+          <span className="font-medium text-ec-warm">{lead.revisionCount}</span>
+        </li>
+        <li>
+          <span className="text-ec-text-dim">E-post skickad: </span>
+          <span className="font-medium text-ec-warm">
+            {lead.emailSentAt ? formatLeadDate(lead.emailSentAt) : "Nej"}
+          </span>
+        </li>
+        <li>
+          <span className="text-ec-text-dim">Senaste aktivitet: </span>
+          <span className="font-medium text-ec-warm">
+            {lead.lastActivityAt ? formatLeadDate(lead.lastActivityAt) : "—"}
+          </span>
+        </li>
+        {lead.lastVersionLabel ? (
+          <li>
+            <span className="text-ec-text-dim">Senast: </span>
+            {lead.lastVersionLabel}
+          </li>
+        ) : null}
+        {lead.leadSource ? (
+          <li>
+            <span className="text-ec-text-dim">Källa: </span>
+            {lead.leadSource}
+          </li>
+        ) : null}
+      </ul>
+      <Link
+        href={lead.visualizationUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary mt-4 inline-flex h-9 items-center rounded-md px-4 text-sm font-medium"
+      >
+        Öppna kundens visualisering
+      </Link>
+    </section>
   );
 }
 

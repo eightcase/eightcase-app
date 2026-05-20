@@ -224,7 +224,10 @@ export function AdminLeads() {
                         </span>
                       ) : null}
                       <p className="mt-0.5 text-xs text-ec-text-dim">
-                        {lead.style ?? "—"} · {lead.timeline ?? "—"}
+                        {lead.style ?? "—"} · {lead.revisionCount} rev ·{" "}
+                        {lead.lastActivityAt
+                          ? "aktiv nyligen"
+                          : lead.timeline ?? "—"}
                       </p>
                     </td>
                     <td className="max-w-[200px] truncate px-4 py-3 text-ec-text-muted">

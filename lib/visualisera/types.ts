@@ -1,5 +1,6 @@
 export type FunnelStep =
   | "address"
+  | "early_contact"
   | "style"
   | "size"
   | "features"

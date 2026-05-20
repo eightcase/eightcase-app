@@ -51,6 +51,9 @@ create table if not exists public.leads (
   preferred_contact_method text,
   consent_given boolean not null default false,
   consent_timestamp timestamptz,
+  last_activity_at timestamptz,
+  email_sent_at timestamptz,
+  visualization_revision_count integer not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -64,6 +67,10 @@ create table if not exists public.visualizations (
   before_image_url text,
   after_image_url text,
   pipeline_payload jsonb,
+  revision_number integer not null default 1,
+  version_label text,
+  editor_state jsonb,
+  updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 

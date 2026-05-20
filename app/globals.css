@@ -424,3 +424,296 @@ body {
   backdrop-filter: none;
   box-shadow: var(--ec-shadow);
 }
+
+/* —— Visualization canvas (CSS composition, no image assets) —— */
+.viz-scene__sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--viz-sky-top) 0%,
+    var(--viz-sky-mid) 42%,
+    var(--viz-sky-bottom) 100%
+  );
+}
+
+.viz-scene__horizon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 28%;
+  height: 18%;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.06));
+}
+
+.viz-scene__lawn {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  bottom: 0;
+  height: 42%;
+  background: linear-gradient(180deg, var(--viz-lawn-accent) 0%, var(--viz-lawn) 55%, #4a5a42 100%);
+}
+
+.viz-scene__lawn-patch {
+  position: absolute;
+  border-radius: 40% 40% 12% 12%;
+  background: var(--viz-lawn);
+  opacity: 0.85;
+}
+
+.viz-scene__hedge {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 34%;
+  height: 8%;
+  border-radius: 50% 50% 0 0;
+  background: var(--viz-hedge);
+  filter: blur(1px);
+}
+
+.viz-scene__tree {
+  position: absolute;
+  bottom: 30%;
+  width: 22%;
+  height: 28%;
+  border-radius: 50% 50% 40% 40%;
+  background: radial-gradient(ellipse at 50% 30%, var(--viz-tree), transparent 70%);
+}
+
+.viz-scene__tree--l {
+  left: -4%;
+}
+.viz-scene__tree--r {
+  right: -4%;
+}
+
+.viz-scene__deck {
+  position: absolute;
+  bottom: 22%;
+  height: 14%;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, var(--viz-deck) 0%, var(--viz-deck-edge) 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.viz-scene__pool {
+  position: absolute;
+  border-radius: 42% 42% 8% 8% / 28% 28% 12% 12%;
+  overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.viz-scene__water {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, var(--viz-water-top) 0%, var(--viz-water-deep) 100%);
+  animation: viz-water-shimmer 6s ease-in-out infinite;
+}
+
+.viz-scene__water-shine {
+  position: absolute;
+  top: 8%;
+  left: 15%;
+  right: 25%;
+  height: 22%;
+  border-radius: 50%;
+  background: var(--viz-water-shine);
+  filter: blur(8px);
+}
+
+.viz-scene__spa {
+  position: absolute;
+  width: 14%;
+  height: 12%;
+  border-radius: 50%;
+  background: linear-gradient(160deg, var(--viz-water-top), var(--viz-water-deep));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.viz-scene__pergola {
+  position: absolute;
+  height: 12%;
+  border: none;
+  border-top: 3px solid rgba(60, 55, 50, 0.5);
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 8%,
+    rgba(60, 55, 50, 0.25) 8%,
+    rgba(60, 55, 50, 0.25) 9%
+  );
+}
+
+.viz-scene__kitchen {
+  position: absolute;
+  width: 16%;
+  height: 8%;
+  border-radius: 0.25rem;
+  background: linear-gradient(180deg, #6a6258, #4a4540);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.viz-scene__lights {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      circle at 72% 55%,
+      rgba(255, 220, 160, calc(var(--viz-light) * 0.35)),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 28% 48%,
+      rgba(255, 200, 140, calc(var(--viz-light) * 0.22)),
+      transparent 30%
+    );
+  pointer-events: none;
+}
+
+.viz-scene__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 80% at 50% 60%, transparent 40%, rgba(15, 18, 16, 0.45));
+  pointer-events: none;
+}
+
+@keyframes viz-water-shimmer {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.08);
+  }
+}
+
+@keyframes viz-canvas-in {
+  from {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.viz-canvas__stage--in {
+  animation: viz-canvas-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.viz-canvas__gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    0deg,
+    rgba(20, 24, 22, 0.82) 0%,
+    rgba(20, 24, 22, 0.2) 45%,
+    transparent 70%
+  );
+}
+
+.viz-canvas__updating {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(20, 24, 22, 0.35);
+  backdrop-filter: blur(4px);
+  color: var(--ec-cream);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.viz-canvas__updating-pulse {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: var(--ec-sage);
+  animation: viz-spin 0.9s linear infinite;
+}
+
+@keyframes viz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.viz-canvas__split-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--ec-cream);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.viz-canvas__split-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.viz-canvas__split-label {
+  position: absolute;
+  top: 1rem;
+  z-index: 6;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(20, 24, 22, 0.45);
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+}
+
+.viz-canvas__split-label--before {
+  left: 1rem;
+}
+.viz-canvas__split-label--after {
+  right: 1rem;
+}
+
+.viz-metrics--pulse .funnel-card {
+  animation: viz-metric-pulse 0.55s ease;
+}
+
+@keyframes viz-metric-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(138, 154, 130, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(138, 154, 130, 0);
+  }
+}
+
+.viz-metrics--dim {
+  opacity: 0.72;
+  transition: opacity 0.3s ease;
+}
+
+.viz-editor-panel {
+  transition: opacity 0.25s ease;
+}
+
+.viz-editor-panel--busy {
+  opacity: 0.65;
+  pointer-events: none;
+}

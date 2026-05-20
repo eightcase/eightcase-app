@@ -19,6 +19,7 @@ const FEATURE_COST: Record<string, number> = {
   Pooltak: 120_000,
   Spabad: 185_000,
   Trädäck: 95_000,
+  Stenplattor: 88_000,
   Värmesystem: 68_000,
   Utekök: 155_000,
 };
