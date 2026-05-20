@@ -2,6 +2,7 @@
 
 import { DrainageUpsellSection } from "@/components/drainage/drainage-upsell-section";
 import { PoolScene } from "@/components/pool-scene";
+import { PropertyPreview } from "@/components/visualisera/property-preview";
 import type { DrainageAssessment } from "@/lib/drainage/types";
 import { buildCoordinatedSummary } from "@/lib/upsell/coordinated";
 import {
@@ -17,6 +18,15 @@ function formatKr(n: number): string {
   return new Intl.NumberFormat("sv-SE").format(n);
 }
 
+type LeadSaveStatus = "idle" | "saving" | "demo" | "supabase" | "error";
+
+type SupabaseConfigStatus = {
+  hasUrl: boolean;
+  hasAnonKey: boolean;
+  configured: boolean;
+  hasCompanyId: boolean;
+};
+
 type ResultStepProps = {
   state: FunnelState;
   estimate: ReturnType<typeof calculateEstimate>;
@@ -24,10 +34,34 @@ type ResultStepProps = {
   monthlyRange: string;
   emailSent: boolean;
   drainageAssessment: DrainageAssessment | null;
+  leadSaveStatus: LeadSaveStatus;
+  leadSaveDetail: string | null;
+  supabaseConfig: SupabaseConfigStatus;
   onOpenDrainage: () => void;
   onBook: () => void;
   onEmail: () => void;
 };
+
+function yesNo(value: boolean): string {
+  return value ? "ja" : "nej";
+}
+
+function saveStatusLabel(status: LeadSaveStatus): string {
+  switch (status) {
+    case "idle":
+      return "väntar";
+    case "saving":
+      return "sparar…";
+    case "supabase":
+      return "Supabase";
+    case "demo":
+      return "demo (localStorage)";
+    case "error":
+      return "fel";
+    default:
+      return status;
+  }
+}
 
 export function ResultStep({
   state,
@@ -36,6 +70,9 @@ export function ResultStep({
   monthlyRange,
   emailSent,
   drainageAssessment,
+  leadSaveStatus,
+  leadSaveDetail,
+  supabaseConfig,
   onOpenDrainage,
   onBook,
   onEmail,
@@ -58,7 +95,7 @@ export function ResultStep({
         <h1 className="font-display mt-4 text-[2.15rem] leading-[1.05] text-ec-warm sm:text-[2.85rem]">
           Ditt premiumförslag
         </h1>
-        <p className="mt-2 text-base text-ec-text-muted">{shortAddress}</p>
+        <p className="mt-2 text-base text-ec-text-muted">Visualisering för: {state.address}</p>
       </header>
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-1 relative mt-10 aspect-[4/3] overflow-hidden rounded-3xl border border-ec-border shadow-[var(--ec-shadow-lg)] sm:mt-12 sm:aspect-[16/10]">
@@ -95,6 +132,13 @@ export function ResultStep({
           Indikativt prisspann baserat på vald stil, storlek och tillval. En skriftlig offert
           fastställs efter platsbesök.
         </p>
+      </div>
+
+      <div className="funnel-result-reveal mt-6">
+        <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
+          Fastighetsunderlag
+        </p>
+        <PropertyPreview address={state.address} className="mt-3 aspect-[16/8]" />
       </div>
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-3 mt-8 grid gap-3 sm:grid-cols-2">
@@ -175,6 +219,25 @@ export function ResultStep({
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-4 funnel-card mt-4 p-5">
         <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
+          AI-genererad visualisering
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-ec-text-muted">
+          Konceptet är framtaget från adress, valt uttryck och dina tillval för att visa hur
+          projektet kan fungera på just din fastighet.
+        </p>
+        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <SummaryRow label="Adress" value={shortAddress} />
+          <SummaryRow label="Poolstil" value={state.style ?? "—"} />
+          <SummaryRow label="Storlek" value={state.size ?? "—"} />
+          <SummaryRow
+            label="Valda tillval"
+            value={state.features.length > 0 ? `${state.features.length} st` : "Inga valda"}
+          />
+        </div>
+      </div>
+
+      <div className="funnel-result-reveal funnel-result-reveal-delay-4 funnel-card mt-4 p-5">
+        <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
           Sammanfattning
         </p>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -210,6 +273,43 @@ export function ResultStep({
       <DrainageUpsellSection onOpen={onOpenDrainage} completed={!!drainageAssessment} />
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-4 mt-10 space-y-3">
+        {leadSaveStatus === "supabase" ? (
+          <div className="rounded-full border border-ec-sage/35 bg-ec-sage/10 px-4 py-2 text-center text-xs font-medium text-ec-sage">
+            Lead sparad i Supabase
+          </div>
+        ) : null}
+        {leadSaveStatus === "demo" ? (
+          <div className="rounded-full border border-ec-border bg-ec-cream/5 px-4 py-2 text-center text-xs font-medium text-ec-text-muted">
+            Lead sparad i demoportalen (endast denna webbläsare)
+          </div>
+        ) : null}
+        {leadSaveStatus === "error" ? (
+          <div className="rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-center text-xs font-medium text-red-200">
+            Kunde inte spara lead
+          </div>
+        ) : null}
+        <div
+          className="rounded-xl border border-ec-border/70 bg-ec-cream/5 px-4 py-3 text-[11px] leading-relaxed text-ec-text-muted"
+          aria-live="polite"
+        >
+          <p className="font-medium uppercase tracking-wider text-ec-text-dim">Sparstatus</p>
+          <ul className="mt-2 space-y-1">
+            <li>Supabase konfigurerad: {yesNo(supabaseConfig.configured)}</li>
+            <li>URL i build: {yesNo(supabaseConfig.hasUrl)}</li>
+            <li>Anon key i build: {yesNo(supabaseConfig.hasAnonKey)}</li>
+            <li>Företags-ID i build: {yesNo(supabaseConfig.hasCompanyId)}</li>
+            <li>Sparresultat: {saveStatusLabel(leadSaveStatus)}</li>
+          </ul>
+          {leadSaveDetail ? (
+            <p className="mt-2 break-words text-ec-text-dim">Detalj: {leadSaveDetail}</p>
+          ) : null}
+          {leadSaveStatus === "idle" || leadSaveStatus === "saving" ? (
+            <p className="mt-2 text-ec-text-dim">
+              Om &quot;Supabase konfigurerad&quot; är nej på Vercel: lägg till env-variabler och
+              gör en ny deploy (NEXT_PUBLIC_* bakas in vid build).
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
           onClick={onBook}

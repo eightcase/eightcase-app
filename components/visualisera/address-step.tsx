@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PropertyPreview } from "@/components/visualisera/property-preview";
 import { ContinueButton, StepHeadline } from "@/components/visualisera/step-ui";
 
 const ALL_SUGGESTIONS = [
@@ -89,27 +90,11 @@ export function AddressStep({ address, onChange, onContinue }: AddressStepProps)
             ) : null}
           </div>
 
-          <div className="relative mt-4 aspect-[2.2/1] overflow-hidden rounded-lg border border-ec-border bg-ec-bg-subtle loading-preview-dark">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(100,110,95,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(100,110,95,0.1) 1px, transparent 1px)",
-                backgroundSize: "16px 16px",
-              }}
-            />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,rgba(180,170,150,0.2),transparent_45%)]" />
-            <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-full funnel-pin-pulse">
-              <span className="relative flex h-9 w-9 items-center justify-center">
-                <span className="absolute h-9 w-9 rounded-full bg-ec-warm/20" />
-                <span className="relative h-3 w-3 rounded-full border-2 border-ec-warm bg-ec-warm shadow-lg shadow-black/40" />
-              </span>
-              <span className="mx-auto mt-0.5 block h-2 w-0.5 bg-ec-warm/80" />
-            </div>
-            <p className="absolute bottom-2 left-2 rounded bg-ec-forest/70 px-2 py-0.5 text-[9px] text-ec-cream/80 backdrop-blur-sm">
-              Kartvy · prototyp
-            </p>
-          </div>
+          <PropertyPreview
+            address={address}
+            className="mt-4 aspect-[2.2/1] loading-preview-dark"
+            label="Fastighetsvy · prototyp"
+          />
         </div>
       </div>
 

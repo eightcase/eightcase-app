@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DrainageOverlay } from "@/components/drainage/drainage-overlay";
 import { AddressStep } from "@/components/visualisera/address-step";
 import { FunnelShell } from "@/components/visualisera/funnel-shell";
@@ -26,6 +26,15 @@ import {
   formatMonthlyRange,
   formatPriceRange,
 } from "@/lib/visualisera/pricing";
+import {
+  prepareMockLead,
+  runAIVizPipeline,
+  type AIPipelineResult,
+  type PreparedLead,
+} from "@/lib/ai-visualization/pipeline";
+import { saveDemoLead } from "@/lib/admin/demo-leads";
+import { saveLeadToSupabase } from "@/lib/admin/supabase-leads";
+import { getSupabasePublicConfigStatus } from "@/lib/supabase/client";
 import type {
   BudgetRange,
   FunnelState,
@@ -69,6 +78,14 @@ export function VisualiseraFunnel() {
   const [drainageOpen, setDrainageOpen] = useState(false);
   const [drainageAssessment, setDrainageAssessment] =
     useState<DrainageAssessment | null>(null);
+  const [pipelineResult, setPipelineResult] = useState<AIPipelineResult | null>(null);
+  const [preparedLead, setPreparedLead] = useState<PreparedLead | null>(null);
+  const [leadSaveStatus, setLeadSaveStatus] = useState<
+    "idle" | "saving" | "demo" | "supabase" | "error"
+  >("idle");
+  const [leadSaveDetail, setLeadSaveDetail] = useState<string | null>(null);
+  const supabaseConfig = getSupabasePublicConfigStatus();
+  const lastSavedSignatureRef = useRef<string | null>(null);
   const goNext = useCallback(() => {
     const i = STEP_ORDER.indexOf(step);
     if (i >= 0 && i < STEP_ORDER.length - 1) {
@@ -86,8 +103,12 @@ export function VisualiseraFunnel() {
   useEffect(() => {
     if (step !== "loading") return;
 
+    setLeadSaveStatus("idle");
+    lastSavedSignatureRef.current = null;
+    setPipelineResult(null);
     setLoadingIndex(0);
     const timers: ReturnType<typeof setTimeout>[] = [];
+    let cancelled = false;
 
     LOADING_STEPS.forEach((_, i) => {
       timers.push(
@@ -103,8 +124,78 @@ export function VisualiseraFunnel() {
       }, LOADING_STEPS.length * LOADING_STEP_MS + 400),
     );
 
-    return () => timers.forEach(clearTimeout);
-  }, [step]);
+    void runAIVizPipeline({
+      address: state.address,
+      style: state.style ?? "Modern",
+      features: state.features,
+    }).then((result) => {
+      if (!cancelled) setPipelineResult(result);
+    });
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [step, state.address, state.features, state.style]);
+
+  const estimate = useMemo(() => calculateEstimate(state), [state]);
+  const progressIndex = PROGRESS[step] ?? 0;
+
+  useEffect(() => {
+    if (step !== "result") return;
+    const valueIncrease = {
+      min: Math.round(((estimate.min + estimate.max) / 2) * 0.12),
+      max: Math.round(((estimate.min + estimate.max) / 2) * 0.18),
+    };
+    const nextLead = prepareMockLead({
+      state,
+      estimate,
+      valueIncrease,
+      drainageAssessment,
+      pipeline: pipelineResult,
+    });
+    setPreparedLead((prev) => (prev?.signature === nextLead.signature ? prev : nextLead));
+  }, [drainageAssessment, estimate, pipelineResult, state, step]);
+
+  useEffect(() => {
+    if (step !== "result" || !preparedLead) return;
+    const signature = preparedLead.signature;
+    if (lastSavedSignatureRef.current === signature) return;
+
+    let cancelled = false;
+    const persistLead = async () => {
+      setLeadSaveStatus("saving");
+      setLeadSaveDetail(null);
+
+      try {
+        const supabaseResult = await saveLeadToSupabase(preparedLead);
+        if (cancelled) return;
+
+        if (supabaseResult.success) {
+          lastSavedSignatureRef.current = signature;
+          setLeadSaveStatus("supabase");
+          setLeadSaveDetail(supabaseResult.message);
+          return;
+        }
+
+        saveDemoLead(preparedLead);
+        lastSavedSignatureRef.current = signature;
+        setLeadSaveStatus("demo");
+        setLeadSaveDetail(supabaseResult.message);
+      } catch (err) {
+        if (cancelled) return;
+        setLeadSaveStatus("error");
+        setLeadSaveDetail(
+          err instanceof Error ? err.message : "Okänt fel vid sparning av lead.",
+        );
+      }
+    };
+
+    void persistLead();
+    return () => {
+      cancelled = true;
+    };
+  }, [preparedLead, step]);
 
   const toggleFeature = (feature: string) => {
     setState((s) => ({
@@ -114,9 +205,6 @@ export function VisualiseraFunnel() {
         : [...s.features, feature],
     }));
   };
-
-  const estimate = calculateEstimate(state);
-  const progressIndex = PROGRESS[step] ?? 0;
 
   const handleDrainageComplete = useCallback((a: DrainageAssessment) => {
     setDrainageAssessment((prev) => {
@@ -187,6 +275,9 @@ export function VisualiseraFunnel() {
           monthlyRange={formatMonthlyRange(estimate)}
           emailSent={emailSent}
           drainageAssessment={drainageAssessment}
+          leadSaveStatus={leadSaveStatus}
+          leadSaveDetail={leadSaveDetail}
+          supabaseConfig={supabaseConfig}
           onOpenDrainage={() => setDrainageOpen(true)}
           onBook={() => {
             window.alert(

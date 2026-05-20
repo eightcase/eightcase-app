@@ -1,7 +1,15 @@
+import path from "path";
 import type { NextConfig } from "next";
 
+/**
+ * Pin Turbopack/webpack to this app directory.
+ * Prevents Next from inferring /Users/echo/Documents as workspace root
+ * when a parent package-lock.json exists.
+ */
 const nextConfig: NextConfig = {
-  /* config options here */
+  turbopack: {
+    root: path.join(__dirname),
+  },
 };
 
 export default nextConfig;
