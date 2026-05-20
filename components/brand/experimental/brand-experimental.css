@@ -1,0 +1,46 @@
+/* Experimental Eightcase mark — scoped to brand components only */
+
+@keyframes ec-symbol-infinity-draw {
+  0% {
+    stroke-dashoffset: 120;
+    opacity: 0.4;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes ec-symbol-roof-settle {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ec-symbol-loading .ec-symbol-infinity {
+  stroke-dasharray: 120;
+  animation: ec-symbol-infinity-draw 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.ec-symbol-loading .ec-symbol-roof {
+  transform-origin: center top;
+  animation: ec-symbol-roof-settle 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ec-symbol-loading .ec-symbol-infinity,
+  .ec-symbol-loading .ec-symbol-roof {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+  }
+}
