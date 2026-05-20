@@ -35,6 +35,12 @@ export type CrmLead = {
   drainageUpsell: DrainageAssessment | null;
   crmStatus: LeadCrmStatus;
   qualityScore: number;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  preferredContactMethod: string | null;
+  consentGiven: boolean;
+  consentTimestamp: string | null;
 };
 
 export const LEAD_STATUS_STORAGE_KEY = "eightcase.leadCrmStatuses.v1";
@@ -162,11 +168,13 @@ export function crmLeadFromPrepared(
       ? parseCrmStatus(lead.crmStatus)
       : resolveCrmStatus(statusKey, "Ny", overrides);
 
+  const contactName = lead.contactName?.trim() || null;
   const base = {
     id: lead.id,
     statusKey,
     source,
-    displayName: source === "supabase" ? "Supabase lead" : "Demo lead",
+    displayName:
+      contactName ?? (source === "supabase" ? "Supabase lead" : "Demo lead"),
     campaign: null,
     createdAt: lead.createdAt,
     address: lead.address,
@@ -179,6 +187,12 @@ export function crmLeadFromPrepared(
     estimatedPropertyValueIncrease: lead.estimatedPropertyValueIncrease,
     drainageUpsell: lead.drainageUpsell,
     crmStatus,
+    contactName,
+    contactEmail: lead.contactEmail?.trim() || null,
+    contactPhone: lead.contactPhone?.trim() || null,
+    preferredContactMethod: lead.preferredContactMethod ?? null,
+    consentGiven: lead.consentGiven ?? false,
+    consentTimestamp: lead.consentTimestamp ?? null,
   };
 
   return {
@@ -240,6 +254,12 @@ export function crmLeadFromMock(
           } satisfies DrainageAssessment)
         : null,
     crmStatus,
+    contactName: null,
+    contactEmail: null,
+    contactPhone: null,
+    preferredContactMethod: null,
+    consentGiven: false,
+    consentTimestamp: null,
   };
 
   return {

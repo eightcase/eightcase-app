@@ -4,7 +4,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const LEAD_SELECT =
-  "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature, crm_status";
+  "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature, crm_status, contact_name, contact_email, contact_phone, preferred_contact_method, consent_given, consent_timestamp";
 
 type LeadInsertRow = {
   company_id: string | null;
@@ -23,6 +23,12 @@ type LeadInsertRow = {
   drainage_payload: PreparedLead["drainageUpsell"];
   signature: string;
   crm_status: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  preferred_contact_method: string | null;
+  consent_given: boolean;
+  consent_timestamp: string | null;
 };
 
 type LeadRow = {
@@ -41,6 +47,12 @@ type LeadRow = {
   drainage_payload: PreparedLead["drainageUpsell"] | null;
   signature: string;
   crm_status: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  preferred_contact_method: string | null;
+  consent_given: boolean | null;
+  consent_timestamp: string | null;
 };
 
 function mapRowToPreparedLead(row: LeadRow): PreparedLead {
@@ -65,6 +77,12 @@ function mapRowToPreparedLead(row: LeadRow): PreparedLead {
     pipeline: null,
     signature: row.signature,
     crmStatus: row.crm_status,
+    contactName: row.contact_name,
+    contactEmail: row.contact_email,
+    contactPhone: row.contact_phone,
+    preferredContactMethod: row.preferred_contact_method,
+    consentGiven: row.consent_given ?? false,
+    consentTimestamp: row.consent_timestamp,
   };
 }
 
@@ -86,11 +104,17 @@ export function mapPreparedLeadToInsert(lead: PreparedLead): LeadInsertRow {
     drainage_payload: lead.drainageUpsell,
     signature: lead.signature,
     crm_status: "Ny",
+    contact_name: lead.contactName ?? null,
+    contact_email: lead.contactEmail ?? null,
+    contact_phone: lead.contactPhone ?? null,
+    preferred_contact_method: lead.preferredContactMethod ?? null,
+    consent_given: lead.consentGiven ?? false,
+    consent_timestamp: lead.consentTimestamp ?? null,
   };
 }
 
 /**
- * Attempts to persist a lead in Supabase.
+ * Persists a lead in Supabase (requires contact details on lead).
  * Caller should fallback to localStorage/demo mode when success is false.
  */
 export async function saveLeadToSupabase(lead: PreparedLead): Promise<{
@@ -102,12 +126,16 @@ export async function saveLeadToSupabase(lead: PreparedLead): Promise<{
     return { success: false, message: "Supabase not configured" };
   }
 
+  if (!lead.consentGiven || !lead.contactName?.trim()) {
+    return { success: false, message: "Kontaktuppgifter saknas" };
+  }
+
   const payload = mapPreparedLeadToInsert(lead);
   const { error } = await client.from("leads").insert(payload);
   if (error) {
     return { success: false, message: error.message };
   }
-  return { success: true, message: "Lead saved to Supabase" };
+  return { success: true, message: "Lead sparad i Supabase" };
 }
 
 /**

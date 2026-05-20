@@ -1,6 +1,8 @@
 "use client";
 
 import { DrainageUpsellSection } from "@/components/drainage/drainage-upsell-section";
+import { ResultContactCard } from "@/components/visualisera/result-contact-card";
+import type { LeadContactInput } from "@/lib/visualisera/lead-contact";
 import { PoolScene } from "@/components/pool-scene";
 import { PropertyPreview } from "@/components/visualisera/property-preview";
 import type { DrainageAssessment } from "@/lib/drainage/types";
@@ -37,6 +39,10 @@ type ResultStepProps = {
   leadSaveStatus: LeadSaveStatus;
   leadSaveDetail: string | null;
   supabaseConfig: SupabaseConfigStatus;
+  contactSubmitted: boolean;
+  submittedContact: { name: string; preferredContactMethod: "Telefon" | "E-post" } | null;
+  contactSaving: boolean;
+  onContactSubmit: (contact: LeadContactInput & { consentTimestamp: string }) => void;
   onOpenDrainage: () => void;
   onBook: () => void;
   onEmail: () => void;
@@ -73,6 +79,10 @@ export function ResultStep({
   leadSaveStatus,
   leadSaveDetail,
   supabaseConfig,
+  contactSubmitted,
+  submittedContact,
+  contactSaving,
+  onContactSubmit,
   onOpenDrainage,
   onBook,
   onEmail,
@@ -272,44 +282,47 @@ export function ResultStep({
 
       <DrainageUpsellSection onOpen={onOpenDrainage} completed={!!drainageAssessment} />
 
+      <div className="mt-10">
+        <ResultContactCard
+          disabled={contactSaving}
+          saving={contactSaving}
+          submitted={contactSubmitted}
+          submittedContact={submittedContact}
+          onSubmit={onContactSubmit}
+        />
+      </div>
+
       <div className="funnel-result-reveal funnel-result-reveal-delay-4 mt-10 space-y-3">
-        {leadSaveStatus === "supabase" ? (
+        {contactSubmitted && leadSaveStatus === "supabase" ? (
           <div className="rounded-full border border-ec-sage/35 bg-ec-sage/10 px-4 py-2 text-center text-xs font-medium text-ec-sage">
             Lead sparad i Supabase
           </div>
         ) : null}
-        {leadSaveStatus === "demo" ? (
+        {contactSubmitted && leadSaveStatus === "demo" ? (
           <div className="rounded-full border border-ec-border bg-ec-cream/5 px-4 py-2 text-center text-xs font-medium text-ec-text-muted">
             Lead sparad i demoportalen (endast denna webbläsare)
           </div>
         ) : null}
-        {leadSaveStatus === "error" ? (
+        {contactSubmitted && leadSaveStatus === "error" ? (
           <div className="rounded-full border border-red-400/40 bg-red-500/10 px-4 py-2 text-center text-xs font-medium text-red-200">
             Kunde inte spara lead
           </div>
         ) : null}
-        <div
-          className="rounded-xl border border-ec-border/70 bg-ec-cream/5 px-4 py-3 text-[11px] leading-relaxed text-ec-text-muted"
-          aria-live="polite"
-        >
-          <p className="font-medium uppercase tracking-wider text-ec-text-dim">Sparstatus</p>
-          <ul className="mt-2 space-y-1">
-            <li>Supabase konfigurerad: {yesNo(supabaseConfig.configured)}</li>
-            <li>URL i build: {yesNo(supabaseConfig.hasUrl)}</li>
-            <li>Anon key i build: {yesNo(supabaseConfig.hasAnonKey)}</li>
-            <li>Företags-ID i build: {yesNo(supabaseConfig.hasCompanyId)}</li>
-            <li>Sparresultat: {saveStatusLabel(leadSaveStatus)}</li>
-          </ul>
-          {leadSaveDetail ? (
-            <p className="mt-2 break-words text-ec-text-dim">Detalj: {leadSaveDetail}</p>
-          ) : null}
-          {leadSaveStatus === "idle" || leadSaveStatus === "saving" ? (
-            <p className="mt-2 text-ec-text-dim">
-              Om &quot;Supabase konfigurerad&quot; är nej på Vercel: lägg till env-variabler och
-              gör en ny deploy (NEXT_PUBLIC_* bakas in vid build).
-            </p>
-          ) : null}
-        </div>
+        {contactSubmitted ? (
+          <div
+            className="rounded-xl border border-ec-border/70 bg-ec-cream/5 px-4 py-3 text-[11px] leading-relaxed text-ec-text-muted"
+            aria-live="polite"
+          >
+            <p className="font-medium uppercase tracking-wider text-ec-text-dim">Sparstatus</p>
+            <ul className="mt-2 space-y-1">
+              <li>Supabase konfigurerad: {yesNo(supabaseConfig.configured)}</li>
+              <li>Sparresultat: {saveStatusLabel(leadSaveStatus)}</li>
+            </ul>
+            {leadSaveDetail ? (
+              <p className="mt-2 break-words text-ec-text-dim">Detalj: {leadSaveDetail}</p>
+            ) : null}
+          </div>
+        ) : null}
         <button
           type="button"
           onClick={onBook}

@@ -27,11 +27,13 @@ import {
   formatPriceRange,
 } from "@/lib/visualisera/pricing";
 import {
+  attachContactToLead,
   prepareMockLead,
   runAIVizPipeline,
   type AIPipelineResult,
   type PreparedLead,
 } from "@/lib/ai-visualization/pipeline";
+import type { LeadContactInput } from "@/lib/visualisera/lead-contact";
 import { saveDemoLead } from "@/lib/admin/demo-leads";
 import { saveLeadToSupabase } from "@/lib/admin/supabase-leads";
 import { getSupabasePublicConfigStatus } from "@/lib/supabase/client";
@@ -84,6 +86,11 @@ export function VisualiseraFunnel() {
     "idle" | "saving" | "demo" | "supabase" | "error"
   >("idle");
   const [leadSaveDetail, setLeadSaveDetail] = useState<string | null>(null);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [submittedContact, setSubmittedContact] = useState<{
+    name: string;
+    preferredContactMethod: "Telefon" | "E-post";
+  } | null>(null);
   const supabaseConfig = getSupabasePublicConfigStatus();
   const lastSavedSignatureRef = useRef<string | null>(null);
   const goNext = useCallback(() => {
@@ -104,6 +111,9 @@ export function VisualiseraFunnel() {
     if (step !== "loading") return;
 
     setLeadSaveStatus("idle");
+    setLeadSaveDetail(null);
+    setContactSubmitted(false);
+    setSubmittedContact(null);
     lastSavedSignatureRef.current = null;
     setPipelineResult(null);
     setLoadingIndex(0);
@@ -157,20 +167,23 @@ export function VisualiseraFunnel() {
     setPreparedLead((prev) => (prev?.signature === nextLead.signature ? prev : nextLead));
   }, [drainageAssessment, estimate, pipelineResult, state, step]);
 
-  useEffect(() => {
-    if (step !== "result" || !preparedLead) return;
-    const signature = preparedLead.signature;
-    if (lastSavedSignatureRef.current === signature) return;
+  const handleContactSubmit = useCallback(
+    async (contact: LeadContactInput & { consentTimestamp: string }) => {
+      if (!preparedLead) return;
+      const signature = preparedLead.signature;
+      if (lastSavedSignatureRef.current === signature) return;
 
-    let cancelled = false;
-    const persistLead = async () => {
+      const leadWithContact = attachContactToLead(preparedLead, contact);
+      setSubmittedContact({
+        name: contact.name,
+        preferredContactMethod: contact.preferredContactMethod,
+      });
+      setContactSubmitted(true);
       setLeadSaveStatus("saving");
       setLeadSaveDetail(null);
 
       try {
-        const supabaseResult = await saveLeadToSupabase(preparedLead);
-        if (cancelled) return;
-
+        const supabaseResult = await saveLeadToSupabase(leadWithContact);
         if (supabaseResult.success) {
           lastSavedSignatureRef.current = signature;
           setLeadSaveStatus("supabase");
@@ -178,24 +191,19 @@ export function VisualiseraFunnel() {
           return;
         }
 
-        saveDemoLead(preparedLead);
+        saveDemoLead(leadWithContact);
         lastSavedSignatureRef.current = signature;
         setLeadSaveStatus("demo");
         setLeadSaveDetail(supabaseResult.message);
       } catch (err) {
-        if (cancelled) return;
         setLeadSaveStatus("error");
         setLeadSaveDetail(
           err instanceof Error ? err.message : "Okänt fel vid sparning av lead.",
         );
       }
-    };
-
-    void persistLead();
-    return () => {
-      cancelled = true;
-    };
-  }, [preparedLead, step]);
+    },
+    [preparedLead],
+  );
 
   const toggleFeature = (feature: string) => {
     setState((s) => ({
@@ -278,6 +286,10 @@ export function VisualiseraFunnel() {
           leadSaveStatus={leadSaveStatus}
           leadSaveDetail={leadSaveDetail}
           supabaseConfig={supabaseConfig}
+          contactSubmitted={contactSubmitted}
+          submittedContact={submittedContact}
+          contactSaving={leadSaveStatus === "saving"}
+          onContactSubmit={handleContactSubmit}
           onOpenDrainage={() => setDrainageOpen(true)}
           onBook={() => {
             window.alert(

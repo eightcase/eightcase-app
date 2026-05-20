@@ -56,7 +56,35 @@ export type PreparedLead = {
   signature: string;
   /** Set when loaded from Supabase (`leads.crm_status`). */
   crmStatus?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  preferredContactMethod?: string | null;
+  consentGiven?: boolean;
+  consentTimestamp?: string | null;
 };
+
+export function attachContactToLead(
+  lead: PreparedLead,
+  contact: {
+    name: string;
+    email: string;
+    phone: string;
+    preferredContactMethod: string;
+    consentGiven: boolean;
+    consentTimestamp: string;
+  },
+): PreparedLead {
+  return {
+    ...lead,
+    contactName: contact.name,
+    contactEmail: contact.email,
+    contactPhone: contact.phone,
+    preferredContactMethod: contact.preferredContactMethod,
+    consentGiven: contact.consentGiven,
+    consentTimestamp: contact.consentTimestamp,
+  };
+}
 
 /**
  * Future production pipeline:

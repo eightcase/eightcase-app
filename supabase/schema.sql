@@ -45,6 +45,12 @@ create table if not exists public.leads (
   drainage_payload jsonb,
   signature text unique,
   crm_status text not null default 'Ny',
+  contact_name text,
+  contact_email text,
+  contact_phone text,
+  preferred_contact_method text,
+  consent_given boolean not null default false,
+  consent_timestamp timestamptz,
   created_at timestamptz not null default now()
 );
 

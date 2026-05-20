@@ -72,6 +72,8 @@ export function LeadDetailDrawer({
         </header>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <ContactSection lead={lead} />
+
           <section className="flex flex-wrap items-center gap-2">
             <SourceChip source={lead.source} />
             <CrmLeadStatusBadge status={lead.crmStatus} />
@@ -181,6 +183,64 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-ec-text-dim">{label}</span>
       <span className="text-right font-medium text-ec-warm">{value}</span>
     </div>
+  );
+}
+
+function ContactSection({ lead }: { lead: CrmLead }) {
+  const hasContact = Boolean(lead.contactName || lead.contactEmail || lead.contactPhone);
+
+  if (!hasContact) {
+    return (
+      <section className="rounded-xl border border-dashed border-ec-border bg-ec-bg-subtle/50 px-4 py-4">
+        <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">Kontakt</p>
+        <p className="mt-2 text-sm text-ec-text-muted">Inga kontaktuppgifter insamlade ännu.</p>
+      </section>
+    );
+  }
+
+  const telHref = lead.contactPhone
+    ? `tel:${lead.contactPhone.replace(/\s/g, "")}`
+    : null;
+  const mailHref = lead.contactEmail ? `mailto:${lead.contactEmail}` : null;
+
+  return (
+    <section className="rounded-xl border border-ec-sage/25 bg-ec-sage/5 px-4 py-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-ec-sage">Kontakt</p>
+      <p className="mt-2 text-lg font-medium text-ec-warm">{lead.contactName ?? "—"}</p>
+      <div className="mt-3 space-y-1.5 text-sm text-ec-text-muted">
+        {lead.contactEmail ? <p>{lead.contactEmail}</p> : null}
+        {lead.contactPhone ? <p>{lead.contactPhone}</p> : null}
+        {lead.preferredContactMethod ? (
+          <p>Föredrar: {lead.preferredContactMethod}</p>
+        ) : null}
+        {lead.consentGiven ? (
+          <p className="text-xs text-ec-text-dim">
+            Samtycke givet
+            {lead.consentTimestamp
+              ? ` · ${formatLeadDate(lead.consentTimestamp)}`
+              : ""}
+          </p>
+        ) : null}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {telHref ? (
+          <a
+            href={telHref}
+            className="btn-secondary inline-flex h-9 items-center rounded-md px-4 text-sm font-medium"
+          >
+            Ring
+          </a>
+        ) : null}
+        {mailHref ? (
+          <a
+            href={mailHref}
+            className="btn-secondary inline-flex h-9 items-center rounded-md px-4 text-sm font-medium"
+          >
+            Maila
+          </a>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
