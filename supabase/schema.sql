@@ -44,6 +44,7 @@ create table if not exists public.leads (
   drainage_risk text,
   drainage_payload jsonb,
   signature text unique,
+  crm_status text not null default 'Ny',
   created_at timestamptz not null default now()
 );
 

@@ -54,6 +54,8 @@ export type PreparedLead = {
   drainageUpsell: DrainageAssessment | null;
   pipeline: AIPipelineResult | null;
   signature: string;
+  /** Set when loaded from Supabase (`leads.crm_status`). */
+  crmStatus?: string | null;
 };
 
 /**

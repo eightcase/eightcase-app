@@ -1,6 +1,10 @@
 import type { PreparedLead } from "@/lib/ai-visualization/pipeline";
+import type { LeadCrmStatus } from "@/lib/admin/lead-crm";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
+
+const LEAD_SELECT =
+  "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature, crm_status";
 
 type LeadInsertRow = {
   company_id: string | null;
@@ -18,6 +22,7 @@ type LeadInsertRow = {
   drainage_risk: string | null;
   drainage_payload: PreparedLead["drainageUpsell"];
   signature: string;
+  crm_status: string;
 };
 
 type LeadRow = {
@@ -35,7 +40,33 @@ type LeadRow = {
   estimated_value_increase_max: number;
   drainage_payload: PreparedLead["drainageUpsell"] | null;
   signature: string;
+  crm_status: string | null;
 };
+
+function mapRowToPreparedLead(row: LeadRow): PreparedLead {
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    address: row.address,
+    style: row.style,
+    size: row.size,
+    features: row.features ?? [],
+    budget: row.budget,
+    timeline: row.timeline,
+    estimatedPrice: {
+      min: row.estimated_price_min,
+      max: row.estimated_price_max,
+    },
+    estimatedPropertyValueIncrease: {
+      min: row.estimated_value_increase_min,
+      max: row.estimated_value_increase_max,
+    },
+    drainageUpsell: row.drainage_payload ?? null,
+    pipeline: null,
+    signature: row.signature,
+    crmStatus: row.crm_status,
+  };
+}
 
 export function mapPreparedLeadToInsert(lead: PreparedLead): LeadInsertRow {
   return {
@@ -54,6 +85,7 @@ export function mapPreparedLeadToInsert(lead: PreparedLead): LeadInsertRow {
     drainage_risk: lead.drainageUpsell?.riskLevel ?? null,
     drainage_payload: lead.drainageUpsell,
     signature: lead.signature,
+    crm_status: "Ny",
   };
 }
 
@@ -79,6 +111,30 @@ export async function saveLeadToSupabase(lead: PreparedLead): Promise<{
 }
 
 /**
+ * Updates CRM status for a Supabase lead row.
+ */
+export async function updateLeadCrmStatusInSupabase(
+  leadId: string,
+  status: LeadCrmStatus,
+): Promise<{ success: boolean; message: string }> {
+  const client = getSupabaseBrowserClient();
+  if (!client) {
+    return { success: false, message: "Supabase not configured" };
+  }
+
+  const { error } = await client
+    .from("leads")
+    .update({ crm_status: status })
+    .eq("id", leadId);
+
+  if (error) {
+    return { success: false, message: error.message };
+  }
+
+  return { success: true, message: "Status sparad i Supabase" };
+}
+
+/**
  * Reads latest leads from Supabase and maps them to PreparedLead-compatible shape.
  */
 export async function readLeadsFromSupabase(limit = 50): Promise<PreparedLead[]> {
@@ -87,35 +143,13 @@ export async function readLeadsFromSupabase(limit = 50): Promise<PreparedLead[]>
 
   const { data, error } = await client
     .from("leads")
-    .select(
-      "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature",
-    )
+    .select(LEAD_SELECT)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error || !data) return [];
 
-  return (data as LeadRow[]).map((row) => ({
-    id: row.id,
-    createdAt: row.created_at,
-    address: row.address,
-    style: row.style,
-    size: row.size,
-    features: row.features ?? [],
-    budget: row.budget,
-    timeline: row.timeline,
-    estimatedPrice: {
-      min: row.estimated_price_min,
-      max: row.estimated_price_max,
-    },
-    estimatedPropertyValueIncrease: {
-      min: row.estimated_value_increase_min,
-      max: row.estimated_value_increase_max,
-    },
-    drainageUpsell: row.drainage_payload ?? null,
-    pipeline: null,
-    signature: row.signature,
-  }));
+  return (data as LeadRow[]).map(mapRowToPreparedLead);
 }
 
 export async function tryReadLeadsFromSupabase(limit = 50): Promise<{
@@ -134,9 +168,7 @@ export async function tryReadLeadsFromSupabase(limit = 50): Promise<{
 
   const { data, error } = await client
     .from("leads")
-    .select(
-      "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature",
-    )
+    .select(LEAD_SELECT)
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -144,27 +176,15 @@ export async function tryReadLeadsFromSupabase(limit = 50): Promise<{
     return { configured: true, leads: [], error: error?.message ?? "Kunde inte läsa leads." };
   }
 
-  const leads = (data as LeadRow[]).map((row) => ({
-    id: row.id,
-    createdAt: row.created_at,
-    address: row.address,
-    style: row.style,
-    size: row.size,
-    features: row.features ?? [],
-    budget: row.budget,
-    timeline: row.timeline,
-    estimatedPrice: {
-      min: row.estimated_price_min,
-      max: row.estimated_price_max,
-    },
-    estimatedPropertyValueIncrease: {
-      min: row.estimated_value_increase_min,
-      max: row.estimated_value_increase_max,
-    },
-    drainageUpsell: row.drainage_payload ?? null,
-    pipeline: null,
-    signature: row.signature,
-  }));
+  const leads = (data as LeadRow[]).map(mapRowToPreparedLead);
 
   return { configured: true, leads, error: null };
+}
+
+/** @deprecated Use updateLeadCrmStatusInSupabase */
+export async function saveLeadStatusToSupabase(input: {
+  leadId: string;
+  status: LeadCrmStatus;
+}): Promise<{ success: boolean; message: string }> {
+  return updateLeadCrmStatusInSupabase(input.leadId, input.status);
 }
