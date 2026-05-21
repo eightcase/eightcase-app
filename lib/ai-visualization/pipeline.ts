@@ -1,5 +1,10 @@
 import type { DrainageAssessment } from "@/lib/drainage/types";
-import type { FunnelState, PriceEstimate } from "@/lib/visualisera/types";
+import type { PropertyAnalysis } from "@/lib/property-analysis/types";
+import { runMockProviderPipeline } from "@/lib/ai-visualization/providers/mock-providers";
+import type { SideViewConcept } from "@/lib/ai-visualization/providers/types";
+import { fetchPropertyImageContext } from "@/lib/property-image/client";
+import type { PropertyImageContext } from "@/lib/property-image/types";
+import type { FunnelState, PoolSize, PoolStyle, PriceEstimate } from "@/lib/visualisera/types";
 
 export type Coordinates = {
   lat: number;
@@ -29,6 +34,8 @@ export type AIPipelineResult = {
   address: string;
   coordinates: Coordinates;
   propertyImage: PropertyImageAsset;
+  propertyAnalysis: PropertyAnalysis;
+  sideView: SideViewConcept;
   concept: PoolConcept;
   render: VisualizationRender;
   generatedAt: string;
@@ -98,17 +105,28 @@ export function attachContactToLead(
 export async function runAIVizPipeline(input: {
   address: string;
   style: NonNullable<FunnelState["style"]>;
+  size?: PoolSize | null;
   features: string[];
 }): Promise<AIPipelineResult> {
-  const coordinates = await geocodeAddress(input.address);
-  const propertyImage = await fetchPropertyImage(coordinates);
+  const style = input.style;
+  const size = input.size ?? "Mellan";
+
+  const propertyCtx = await fetchPropertyImageContext(input.address);
+  const coordinates = propertyCtx.coordinates;
+  const propertyImage = propertyContextToAsset(propertyCtx);
+
   const concept = await buildPoolConcept({
-    style: input.style,
+    style,
     features: input.features,
     address: input.address,
   });
-  const render = await renderPoolVisualization({
-    propertyImage,
+
+  const { propertyAnalysis, sideView, render } = await runMockProviderPipeline({
+    address: input.address,
+    style,
+    size,
+    features: input.features,
+    propertyImage: propertyCtx,
     concept,
   });
 
@@ -116,27 +134,19 @@ export async function runAIVizPipeline(input: {
     address: input.address,
     coordinates,
     propertyImage,
+    propertyAnalysis,
+    sideView,
     concept,
     render,
     generatedAt: new Date().toISOString(),
   };
 }
 
-async function geocodeAddress(address: string): Promise<Coordinates> {
-  // TODO (Google Maps Geocoding): replace mock coordinate generation with real geocoding.
-  const hash = hashString(address || "stockholm");
-  const lat = 55.55 + (hash % 1000) / 10000;
-  const lng = 12.85 + ((hash >> 6) % 1000) / 10000;
-  return { lat, lng };
-}
-
-async function fetchPropertyImage(coords: Coordinates): Promise<PropertyImageAsset> {
-  // TODO (Google Static Maps): call Google Maps Static API using coords and desired zoom/size.
-  const fakeToken = `${coords.lat.toFixed(4)}-${coords.lng.toFixed(4)}`;
+function propertyContextToAsset(ctx: PropertyImageContext): PropertyImageAsset {
   return {
-    source: "mock",
-    imageUrl: `mock://property-satellite/${fakeToken}`,
-    capturedAt: new Date().toISOString(),
+    source: ctx.source === "google-static" ? "google-static" : "mock",
+    imageUrl: ctx.imageUrl ?? `mock://property-satellite/${ctx.coordinates.lat}-${ctx.coordinates.lng}`,
+    capturedAt: ctx.capturedAt,
   };
 }
 
@@ -151,19 +161,6 @@ async function buildPoolConcept(input: {
     promptSummary: `Poolkoncept för ${input.address} med fokus på ${input.style.toLowerCase()} känsla.`,
     style: input.style,
     features: input.features,
-  };
-}
-
-async function renderPoolVisualization(input: {
-  propertyImage: PropertyImageAsset;
-  concept: PoolConcept;
-}): Promise<VisualizationRender> {
-  // TODO (Image generation): send concept + property image into real rendering model.
-  const key = hashString(`${input.propertyImage.imageUrl}:${input.concept.title}`);
-  return {
-    source: "mock",
-    beforeImageUrl: `mock://render/before/${key}`,
-    afterImageUrl: `mock://render/after/${key}`,
   };
 }
 
@@ -208,13 +205,4 @@ export function prepareMockLead(input: {
     pipeline: input.pipeline,
     signature,
   };
-}
-
-function hashString(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
 }

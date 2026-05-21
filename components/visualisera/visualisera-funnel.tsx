@@ -151,6 +151,7 @@ export function VisualiseraFunnel() {
     void runAIVizPipeline({
       address: state.address,
       style: state.style ?? "Modern",
+      size: state.size,
       features: state.features,
     }).then((result) => {
       if (!cancelled) setPipelineResult(result);
@@ -349,6 +350,8 @@ export function VisualiseraFunnel() {
           visualizationUrl={
             activeLeadId ? visualizationPagePath(activeLeadId) : null
           }
+          propertyAnalysis={pipelineResult?.propertyAnalysis ?? null}
+          sideView={pipelineResult?.sideView ?? null}
         />
       )}
     </FunnelShell>

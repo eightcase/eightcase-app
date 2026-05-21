@@ -3,9 +3,12 @@
 import { DrainageUpsellSection } from "@/components/drainage/drainage-upsell-section";
 import { ResultContactCard } from "@/components/visualisera/result-contact-card";
 import type { LeadContactInput } from "@/lib/visualisera/lead-contact";
-import { PoolScene } from "@/components/pool-scene";
-import { PropertyPreview } from "@/components/visualisera/property-preview";
+import { BeforeAfterPresentation } from "@/components/visualisera/before-after-presentation";
+import { PropertySatelliteAnalysis } from "@/components/visualisera/property-satellite-analysis";
+import { SideViewConceptCard } from "@/components/visualisera/side-view-concept-card";
+import type { SideViewConcept } from "@/lib/ai-visualization/providers/types";
 import type { DrainageAssessment } from "@/lib/drainage/types";
+import type { PropertyAnalysis } from "@/lib/property-analysis/types";
 import { buildCoordinatedSummary } from "@/lib/upsell/coordinated";
 import {
   formatFinancingFrom,
@@ -44,6 +47,8 @@ type ResultStepProps = {
   contactSaving: boolean;
   onContactSubmit: (contact: LeadContactInput & { consentTimestamp: string }) => void;
   visualizationUrl: string | null;
+  propertyAnalysis: PropertyAnalysis | null;
+  sideView: SideViewConcept | null;
   onOpenDrainage: () => void;
   onBook: () => void;
   onEmail: () => void;
@@ -85,6 +90,8 @@ export function ResultStep({
   contactSaving,
   onContactSubmit,
   visualizationUrl,
+  propertyAnalysis,
+  sideView,
   onOpenDrainage,
   onBook,
   onEmail,
@@ -110,30 +117,29 @@ export function ResultStep({
         <p className="mt-2 text-base text-ec-text-muted">Visualisering för: {state.address}</p>
       </header>
 
-      <div className="funnel-result-reveal funnel-result-reveal-delay-1 relative mt-10 aspect-[4/3] overflow-hidden rounded-3xl border border-ec-border shadow-[var(--ec-shadow-lg)] sm:mt-12 sm:aspect-[16/10]">
-        <div className="absolute inset-0 grid grid-cols-2">
-          <div className="relative border-r border-ec-border-subtle">
-            <PoolScene variant="before" />
-            <span className="absolute left-4 top-4 rounded-full bg-ec-forest/75 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-ec-cream/90 backdrop-blur-sm">
-              Före
-            </span>
-          </div>
-          <div className="relative">
-            <PoolScene variant="after" />
-            <span className="absolute right-4 top-4 rounded-full border border-ec-sage/40 bg-ec-sage/25 px-3 py-1 text-[10px] font-medium uppercase tracking-widest text-ec-cream backdrop-blur-sm">
-              Efter
-            </span>
-          </div>
+      {propertyAnalysis ? (
+        <div className="funnel-result-reveal funnel-result-reveal-delay-1 mt-10 sm:mt-12">
+          <PropertySatelliteAnalysis analysis={propertyAnalysis} />
+          {propertyAnalysis.notes[0] ? (
+            <p className="mt-3 text-sm leading-relaxed text-ec-text-muted">{propertyAnalysis.notes[0]}</p>
+          ) : null}
         </div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ec-forest-deep/95 via-ec-forest/60 to-transparent px-5 pb-5 pt-20">
-          <p className="text-sm font-medium text-ec-cream">
-            {state.style} · {state.size}
-          </p>
-          <p className="mt-1 text-xs text-ec-cream/75">
-            AI-genererat för din tomt · redo för rådgivning
-          </p>
-        </div>
+      ) : null}
+
+      <div className="funnel-result-reveal funnel-result-reveal-delay-1 mt-8">
+        <BeforeAfterPresentation
+          styleLabel={`${state.style ?? "Pool"} · ${state.size ?? ""}`}
+        />
+        <p className="mt-3 text-sm leading-relaxed text-ec-text-muted">
+          Första vyn baseras på satellitbild. Sidovyn är en AI-genererad konceptvy.
+        </p>
       </div>
+
+      {sideView ? (
+        <div className="funnel-result-reveal funnel-result-reveal-delay-2 mt-8">
+          <SideViewConceptCard sideView={sideView} analysis={propertyAnalysis} />
+        </div>
+      ) : null}
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-2 mt-10">
         <p className="text-xs uppercase tracking-[0.2em] text-ec-text-dim">Uppskattad investering</p>
@@ -144,13 +150,6 @@ export function ResultStep({
           Indikativt prisspann baserat på vald stil, storlek och tillval. En skriftlig offert
           fastställs efter platsbesök.
         </p>
-      </div>
-
-      <div className="funnel-result-reveal mt-6">
-        <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
-          Fastighetsunderlag
-        </p>
-        <PropertyPreview address={state.address} className="mt-3 aspect-[16/8]" />
       </div>
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-3 mt-8 grid gap-3 sm:grid-cols-2">

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AnimatedMetrics } from "@/components/visualization/animated-metrics";
-import {
-  VisualizationCanvas,
-  type ComparisonMode,
-} from "@/components/visualization/visualization-canvas";
+import { VisualizationViewTabs } from "@/components/visualization/visualization-view-tabs";
+import type { SideViewConcept } from "@/lib/ai-visualization/providers/types";
+import { resolveVisualizationAnalysis } from "@/lib/visualization/analysis-context";
+import type { PropertyAnalysis } from "@/lib/property-analysis/types";
 import { EDITOR_FEATURES } from "@/lib/visualization/editor-features";
 import { mockVisualizationRenderLayer } from "@/lib/visualization/render-layer";
 import { PREMIUM_COPY } from "@/lib/visualization/property-context";
@@ -31,7 +31,9 @@ export function VisualizationEditor({
   onSaveRevision,
 }: VisualizationEditorProps) {
   const [editor, setEditor] = useState(initialEditor);
-  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("after");
+  const [propertyAnalysis, setPropertyAnalysis] = useState<PropertyAnalysis | null>(null);
+  const [sideView, setSideView] = useState<SideViewConcept | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(true);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [versionFlash, setVersionFlash] = useState(false);
@@ -41,6 +43,20 @@ export function VisualizationEditor({
     () => mockVisualizationRenderLayer.describe(snapshot.render),
     [snapshot.render],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    setAnalysisLoading(true);
+    void resolveVisualizationAnalysis(editor).then((ctx) => {
+      if (cancelled) return;
+      setPropertyAnalysis(ctx.propertyAnalysis);
+      setSideView(ctx.sideView);
+      setAnalysisLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [editor.address, editor.style, editor.size, editor.featureIds.join(",")]);
 
   const persist = useCallback(
     async (next: VisualizationEditorState) => {
@@ -88,12 +104,19 @@ export function VisualizationEditor({
           </div>
         ) : null}
 
-        <VisualizationCanvas
-          viewModel={viewModel}
-          mode={comparisonMode}
-          onModeChange={setComparisonMode}
-          isUpdating={saving}
-        />
+        {propertyAnalysis && sideView ? (
+          <VisualizationViewTabs
+            analysis={propertyAnalysis}
+            sideView={sideView}
+            backyardViewModel={viewModel}
+            styleLabel={`${editor.style} · ${editor.size}`}
+            isUpdating={saving || analysisLoading}
+          />
+        ) : (
+          <div className="mt-8 rounded-2xl border border-ec-border-subtle bg-ec-bg-subtle/40 px-6 py-12 text-center text-sm text-ec-text-muted">
+            {analysisLoading ? "Laddar fastighetsanalys…" : "Kunde inte ladda visualisering."}
+          </div>
+        )}
 
         <AnimatedMetrics
           estimate={snapshot.estimate}

@@ -18,19 +18,19 @@ export const TIMELINE_OPTIONS = [
 
 export const LOADING_STEPS = [
   {
-    label: "Analyserar tomtens ljusförhållanden",
-    detail: "Satellitdata och skuggkartering",
+    label: "Analyserar tomtgräns",
+    detail: "Satellitbild och fastighetsdata från Google Maps",
   },
   {
-    label: "Beräknar möjlig poolplacering",
-    detail: "Tomtgränser och tillgänglig yta",
+    label: "Identifierar möjlig poolplacering",
+    detail: "Bostad, trädgård och lämplig yta",
   },
   {
-    label: "Skapar visualisering",
-    detail: "AI-render i vald stil",
+    label: "Skapar vy från trädgården",
+    detail: "Sidovy och koncept utifrån dina val",
   },
   {
-    label: "Beräknar prisindikation",
+    label: "Beräknar offert",
     detail: "Storlek, tillval och marknad",
   },
 ] as const;
