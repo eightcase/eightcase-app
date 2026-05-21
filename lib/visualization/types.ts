@@ -1,5 +1,5 @@
-import type { PoolSize, PoolStyle } from "@/lib/visualisera/types";
-import type { PriceEstimate } from "@/lib/visualisera/types";
+import type { AITransformationResult } from "@/lib/ai-transformation/types";
+import type { PoolSize, PoolStyle, PriceEstimate } from "@/lib/visualisera/types";
 
 /** Canonical editor document — future AI render jobs read this shape. */
 export type VisualizationEditorState = {
@@ -33,6 +33,7 @@ export type VisualizationSnapshot = {
   estimate: PriceEstimate;
   valueIncrease: { min: number; max: number };
   render: VisualizationRenderDescriptor;
+  transformation?: AITransformationResult | null;
   meta: VisualizationRevisionMeta;
 };
 

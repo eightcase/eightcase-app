@@ -54,6 +54,12 @@ create table if not exists public.leads (
   last_activity_at timestamptz,
   email_sent_at timestamptz,
   visualization_revision_count integer not null default 0,
+  ai_generation_status text,
+  ai_generation_provider text,
+  ai_generated_preview_url text,
+  ai_generation_started_at timestamptz,
+  ai_generation_completed_at timestamptz,
+  ai_generation_metadata jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -70,9 +76,15 @@ create table if not exists public.visualizations (
   revision_number integer not null default 1,
   version_label text,
   editor_state jsonb,
+  ai_generation_status text,
+  ai_generation_provider text,
+  ai_generation_metadata jsonb,
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+-- Supabase Storage bucket (create in Dashboard): visualizations
+-- Paths: {company_id}/{lead_id}/rev-NNN/original.jpg | generated.jpg | generation.json
 
 create index if not exists idx_campaigns_company on public.campaigns(company_id);
 create index if not exists idx_leads_company on public.leads(company_id);

@@ -8,6 +8,7 @@ import {
   formatLeadDate,
   LEAD_CRM_STATUSES,
   type CrmLead,
+  generationStatusLabel,
   type LeadCrmStatus,
 } from "@/lib/admin/lead-crm";
 
@@ -75,6 +76,7 @@ export function LeadDetailDrawer({
         <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
           <ContactSection lead={lead} />
           <VisualizationActivitySection lead={lead} />
+          <AiGenerationSection lead={lead} />
 
           <section className="flex flex-wrap items-center gap-2">
             <SourceChip source={lead.source} />
@@ -185,6 +187,60 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <span className="text-ec-text-dim">{label}</span>
       <span className="text-right font-medium text-ec-warm">{value}</span>
     </div>
+  );
+}
+
+function AiGenerationSection({ lead }: { lead: CrmLead }) {
+  const tx = lead.aiTransformation;
+  if (!tx) {
+    return (
+      <section className="rounded-xl border border-dashed border-ec-border bg-ec-bg-subtle/50 px-4 py-4">
+        <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
+          AI-generering
+        </p>
+        <p className="mt-2 text-sm text-ec-text-muted">Ingen genereringsdata ännu.</p>
+      </section>
+    );
+  }
+
+  const previewUrl =
+    tx.generatedImageUrl?.startsWith("http") ? tx.generatedImageUrl : null;
+
+  return (
+    <section className="rounded-xl border border-ec-border-subtle bg-ec-bg-subtle/40 px-4 py-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-ec-text-dim">
+        AI-generering
+      </p>
+      <ul className="mt-3 space-y-2 text-sm text-ec-text-muted">
+        <li>
+          <span className="text-ec-text-dim">Status: </span>
+          <span className="font-medium text-ec-warm">{generationStatusLabel(tx.status)}</span>
+        </li>
+        <li>
+          <span className="text-ec-text-dim">Provider: </span>
+          <span className="font-medium text-ec-warm">{tx.providerId}</span>
+        </li>
+        <li>
+          <span className="text-ec-text-dim">Genererad: </span>
+          <span className="font-medium text-ec-warm">
+            {tx.completedAt ? formatLeadDate(tx.completedAt) : "—"}
+          </span>
+        </li>
+        {tx.errorMessage ? (
+          <li className="text-red-600/90">{tx.errorMessage}</li>
+        ) : null}
+      </ul>
+      {previewUrl ? (
+        <div className="relative mt-4 aspect-video overflow-hidden rounded-lg border border-ec-border">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={previewUrl} alt="AI-genererad förhandsvisning" className="h-full w-full object-cover" />
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] text-ec-text-dim">
+          Förhandsvisning visas när en riktig bild-URL finns (HTTP/HTTPS).
+        </p>
+      )}
+    </section>
   );
 }
 

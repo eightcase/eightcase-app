@@ -1,4 +1,8 @@
 import type { PreparedLead } from "@/lib/ai-visualization/pipeline";
+import {
+  aiTransformationFromDbFields,
+  aiTransformationToDbFields,
+} from "@/lib/admin/ai-transformation-db";
 import type { LeadCrmStatus } from "@/lib/admin/lead-crm";
 import type { VisualizationSnapshot } from "@/lib/visualization/types";
 import { editorFeatureIdsToPricingFeatures } from "@/lib/visualization/editor-features";
@@ -6,7 +10,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const LEAD_SELECT =
-  "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature, crm_status, contact_name, contact_email, contact_phone, preferred_contact_method, consent_given, consent_timestamp, source, last_activity_at, email_sent_at, visualization_revision_count";
+  "id, created_at, address, style, size, features, budget, timeline, estimated_price_min, estimated_price_max, estimated_value_increase_min, estimated_value_increase_max, drainage_payload, signature, crm_status, contact_name, contact_email, contact_phone, preferred_contact_method, consent_given, consent_timestamp, source, last_activity_at, email_sent_at, visualization_revision_count, ai_generation_status, ai_generation_provider, ai_generated_preview_url, ai_generation_started_at, ai_generation_completed_at, ai_generation_metadata";
 
 type LeadInsertRow = {
   company_id: string | null;
@@ -60,6 +64,12 @@ type LeadRow = {
   last_activity_at: string | null;
   email_sent_at: string | null;
   visualization_revision_count: number | null;
+  ai_generation_status: string | null;
+  ai_generation_provider: string | null;
+  ai_generated_preview_url: string | null;
+  ai_generation_started_at: string | null;
+  ai_generation_completed_at: string | null;
+  ai_generation_metadata: Record<string, unknown> | null;
 };
 
 function mapRowToPreparedLead(row: LeadRow): PreparedLead {
@@ -94,6 +104,7 @@ function mapRowToPreparedLead(row: LeadRow): PreparedLead {
     lastActivityAt: row.last_activity_at,
     emailSentAt: row.email_sent_at,
     revisionCount: row.visualization_revision_count ?? 0,
+    aiTransformation: aiTransformationFromDbFields(row),
   };
 }
 
@@ -221,6 +232,9 @@ export async function updateLeadInSupabase(lead: PreparedLead): Promise<{
       consent_given: lead.consentGiven ?? false,
       consent_timestamp: lead.consentTimestamp,
       last_activity_at: now,
+      ...aiTransformationToDbFields(
+        lead.aiTransformation ?? lead.pipeline?.transformation,
+      ),
     })
     .eq("id", lead.id);
 
@@ -249,7 +263,12 @@ export async function saveLeadToSupabase(lead: PreparedLead): Promise<{
     return { success: false, message: "Kontaktuppgifter saknas" };
   }
 
-  const payload = mapPreparedLeadToInsert(lead);
+  const payload = {
+    ...mapPreparedLeadToInsert(lead),
+    ...aiTransformationToDbFields(
+      lead.aiTransformation ?? lead.pipeline?.transformation,
+    ),
+  };
   const { data, error } = await client.from("leads").insert(payload).select("id").single();
   if (error) {
     return { success: false, message: error.message };
@@ -276,7 +295,11 @@ export async function saveVisualizationRevisionToSupabase(
     editor_state: snapshot.editor,
     revision_number: snapshot.meta.revision,
     version_label: snapshot.meta.versionLabel,
-    pipeline_payload: { render: snapshot.render, estimate: snapshot.estimate },
+    pipeline_payload: {
+      render: snapshot.render,
+      estimate: snapshot.estimate,
+      transformation: snapshot.transformation ?? null,
+    },
     updated_at: now,
   });
 

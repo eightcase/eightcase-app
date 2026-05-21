@@ -1,4 +1,6 @@
 import type { PreparedLead } from "@/lib/ai-visualization/pipeline";
+import type { AITransformationResult } from "@/lib/ai-transformation/types";
+import { generationStatusLabel } from "@/lib/ai-transformation/generation-job";
 import { visualizationPagePath } from "@/lib/visualization/state";
 import type { DrainageAssessment } from "@/lib/drainage/types";
 import type { Lead, LeadStatus as MockHeatStatus } from "@/lib/admin/mock-data";
@@ -48,7 +50,10 @@ export type CrmLead = {
   revisionCount: number;
   lastVersionLabel: string | null;
   visualizationUrl: string;
+  aiTransformation: AITransformationResult | null;
 };
+
+export { generationStatusLabel };
 
 export const LEAD_STATUS_STORAGE_KEY = "eightcase.leadCrmStatuses.v1";
 
@@ -206,6 +211,8 @@ export function crmLeadFromPrepared(
     revisionCount: lead.revisionCount ?? 0,
     lastVersionLabel: lead.lastVersionLabel ?? null,
     visualizationUrl: visualizationPagePath(lead.id),
+    aiTransformation:
+      lead.aiTransformation ?? lead.pipeline?.transformation ?? null,
   };
 
   return {
@@ -279,6 +286,7 @@ export function crmLeadFromMock(
     revisionCount: 0,
     lastVersionLabel: null,
     visualizationUrl: visualizationPagePath(lead.id),
+    aiTransformation: null,
   };
 
   return {

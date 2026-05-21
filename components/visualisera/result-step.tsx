@@ -3,9 +3,10 @@
 import { DrainageUpsellSection } from "@/components/drainage/drainage-upsell-section";
 import { ResultContactCard } from "@/components/visualisera/result-contact-card";
 import type { LeadContactInput } from "@/lib/visualisera/lead-contact";
-import { BeforeAfterPresentation } from "@/components/visualisera/before-after-presentation";
+import { AiTransformationResult } from "@/components/visualisera/ai-transformation-result";
 import { PropertySatelliteAnalysis } from "@/components/visualisera/property-satellite-analysis";
 import { SideViewConceptCard } from "@/components/visualisera/side-view-concept-card";
+import type { AITransformationResult as TransformationResult } from "@/lib/ai-transformation/types";
 import type { SideViewConcept } from "@/lib/ai-visualization/providers/types";
 import type { DrainageAssessment } from "@/lib/drainage/types";
 import type { PropertyAnalysis } from "@/lib/property-analysis/types";
@@ -49,6 +50,8 @@ type ResultStepProps = {
   visualizationUrl: string | null;
   propertyAnalysis: PropertyAnalysis | null;
   sideView: SideViewConcept | null;
+  transformation: TransformationResult | null;
+  realAiEnabled: boolean;
   onOpenDrainage: () => void;
   onBook: () => void;
   onEmail: () => void;
@@ -92,6 +95,8 @@ export function ResultStep({
   visualizationUrl,
   propertyAnalysis,
   sideView,
+  transformation,
+  realAiEnabled,
   onOpenDrainage,
   onBook,
   onEmail,
@@ -127,9 +132,14 @@ export function ResultStep({
       ) : null}
 
       <div className="funnel-result-reveal funnel-result-reveal-delay-1 mt-8">
-        <BeforeAfterPresentation
-          styleLabel={`${state.style ?? "Pool"} · ${state.size ?? ""}`}
-        />
+        {transformation ? (
+          <AiTransformationResult
+            transformation={transformation}
+            address={state.address}
+            styleLabel={`${state.style ?? "Pool"} · ${state.size ?? ""}`}
+            realAiEnabled={realAiEnabled}
+          />
+        ) : null}
         <p className="mt-3 text-sm leading-relaxed text-ec-text-muted">
           Första vyn baseras på satellitbild. Sidovyn är en AI-genererad konceptvy.
         </p>

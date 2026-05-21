@@ -17,6 +17,7 @@ import {
   OptionCard,
   StepHeadline,
 } from "@/components/visualisera/step-ui";
+import { isRealAiTransformationEnabledClient } from "@/lib/ai-transformation/config";
 import {
   BUDGET_OPTIONS,
   FEATURES,
@@ -134,18 +135,33 @@ export function VisualiseraFunnel() {
     const timers: ReturnType<typeof setTimeout>[] = [];
     let cancelled = false;
 
+    let pipelineDone = false;
+    let minTimeDone = false;
+    const realAi = isRealAiTransformationEnabledClient();
+
+    const tryGoToResult = () => {
+      if (pipelineDone && minTimeDone && !cancelled) {
+        setStep("result");
+      }
+    };
+
     LOADING_STEPS.forEach((_, i) => {
       timers.push(
         setTimeout(() => {
-          setLoadingIndex(i);
+          if (!cancelled) setLoadingIndex(i);
         }, i * LOADING_STEP_MS),
       );
     });
 
+    const minMs = realAi
+      ? LOADING_STEPS.length * LOADING_STEP_MS + 400
+      : LOADING_STEPS.length * LOADING_STEP_MS + 400;
+
     timers.push(
       setTimeout(() => {
-        setStep("result");
-      }, LOADING_STEPS.length * LOADING_STEP_MS + 400),
+        minTimeDone = true;
+        tryGoToResult();
+      }, minMs),
     );
 
     void runAIVizPipeline({
@@ -153,9 +169,20 @@ export function VisualiseraFunnel() {
       style: state.style ?? "Modern",
       size: state.size,
       features: state.features,
-    }).then((result) => {
-      if (!cancelled) setPipelineResult(result);
-    });
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setPipelineResult(result);
+          pipelineDone = true;
+          tryGoToResult();
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          pipelineDone = true;
+          tryGoToResult();
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -190,8 +217,13 @@ export function VisualiseraFunnel() {
     }
     syncedVizRevisionRef.current = true;
     const editor = funnelStateToEditorState(state, 2);
-    void persistVisualizationRevision(activeLeadId, editor, leadStorage);
-  }, [activeLeadId, leadStorage, state, step]);
+    void persistVisualizationRevision(
+      activeLeadId,
+      editor,
+      leadStorage,
+      pipelineResult?.transformation,
+    );
+  }, [activeLeadId, leadStorage, pipelineResult?.transformation, state, step]);
 
   const handleEarlyContactSubmit = useCallback(
     async (payload: EarlyContactPayload) => {
@@ -352,6 +384,8 @@ export function VisualiseraFunnel() {
           }
           propertyAnalysis={pipelineResult?.propertyAnalysis ?? null}
           sideView={pipelineResult?.sideView ?? null}
+          transformation={pipelineResult?.transformation ?? null}
+          realAiEnabled={pipelineResult?.realAiEnabled ?? false}
         />
       )}
     </FunnelShell>

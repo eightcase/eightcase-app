@@ -1,3 +1,4 @@
+import type { AITransformationResult } from "@/lib/ai-transformation/types";
 import type { PreparedLead } from "@/lib/ai-visualization/pipeline";
 import {
   getDemoLeadById,
@@ -173,8 +174,9 @@ export async function persistVisualizationRevision(
   leadId: string,
   editor: VisualizationEditorState,
   storage: "supabase" | "demo" | null,
+  transformation?: AITransformationResult | null,
 ): Promise<{ success: boolean; snapshot: VisualizationSnapshot; message: string }> {
-  const snapshot = buildVisualizationSnapshot(editor, "Version uppdaterad");
+  const snapshot = buildVisualizationSnapshot(editor, "Version uppdaterad", transformation);
 
   if (storage === "supabase") {
     const result = await saveVisualizationRevisionToSupabase(leadId, snapshot);
@@ -195,6 +197,7 @@ export async function persistVisualizationRevision(
       revisionCount: snapshot.meta.revision,
       lastVersionLabel: snapshot.meta.versionLabel,
       lastActivityAt: new Date().toISOString(),
+      aiTransformation: snapshot.transformation ?? lead.aiTransformation,
     });
   }
 

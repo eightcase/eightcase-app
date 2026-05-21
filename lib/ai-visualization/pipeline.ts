@@ -1,4 +1,6 @@
 import type { DrainageAssessment } from "@/lib/drainage/types";
+import type { AITransformationResult } from "@/lib/ai-transformation/types";
+import { resolveTransformation } from "@/lib/ai-transformation/resolve-transformation";
 import type { PropertyAnalysis } from "@/lib/property-analysis/types";
 import { runMockProviderPipeline } from "@/lib/ai-visualization/providers/mock-providers";
 import type { SideViewConcept } from "@/lib/ai-visualization/providers/types";
@@ -38,6 +40,8 @@ export type AIPipelineResult = {
   sideView: SideViewConcept;
   concept: PoolConcept;
   render: VisualizationRender;
+  transformation: AITransformationResult;
+  realAiEnabled: boolean;
   generatedAt: string;
 };
 
@@ -74,6 +78,7 @@ export type PreparedLead = {
   emailSentAt?: string | null;
   revisionCount?: number;
   lastVersionLabel?: string | null;
+  aiTransformation?: AITransformationResult | null;
 };
 
 export function attachContactToLead(
@@ -130,6 +135,24 @@ export async function runAIVizPipeline(input: {
     concept,
   });
 
+  const { result: transformation, realAiEnabled } = await resolveTransformation({
+    address: input.address,
+    propertyImage: propertyCtx,
+    propertyAnalysis,
+    style,
+    size,
+    features: input.features,
+  });
+
+  const mergedRender: VisualizationRender =
+    transformation.status === "completed" && transformation.generatedImageUrl
+      ? {
+          source: "ai-renderer",
+          beforeImageUrl: transformation.beforeImageUrl,
+          afterImageUrl: transformation.afterImageUrl,
+        }
+      : render;
+
   return {
     address: input.address,
     coordinates,
@@ -137,7 +160,9 @@ export async function runAIVizPipeline(input: {
     propertyAnalysis,
     sideView,
     concept,
-    render,
+    render: mergedRender,
+    transformation,
+    realAiEnabled,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -203,6 +228,7 @@ export function prepareMockLead(input: {
     estimatedPropertyValueIncrease: input.valueIncrease,
     drainageUpsell: input.drainageAssessment,
     pipeline: input.pipeline,
+    aiTransformation: input.pipeline?.transformation ?? null,
     signature,
   };
 }

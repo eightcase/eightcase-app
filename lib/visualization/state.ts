@@ -4,6 +4,7 @@ import {
   editorFeatureIdsToPricingFeatures,
   pricingFeaturesToEditorIds,
 } from "@/lib/visualization/editor-features";
+import type { AITransformationResult } from "@/lib/ai-transformation/types";
 import type {
   VisualizationEditorState,
   VisualizationRenderDescriptor,
@@ -70,6 +71,7 @@ export function buildRenderDescriptor(editor: VisualizationEditorState): Visuali
 export function buildVisualizationSnapshot(
   editor: VisualizationEditorState,
   versionLabel?: string,
+  transformation?: AITransformationResult | null,
 ): VisualizationSnapshot {
   const funnel = editorStateToFunnelState(editor);
   const estimate = calculateEstimate(funnel);
@@ -81,6 +83,7 @@ export function buildVisualizationSnapshot(
     estimate,
     valueIncrease,
     render: buildRenderDescriptor(editor),
+    transformation: transformation ?? null,
     meta: {
       revision: editor.revision,
       versionLabel: label,
